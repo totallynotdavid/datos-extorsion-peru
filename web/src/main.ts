@@ -13,12 +13,15 @@ maplibregl.config.WORKER_URL = workerUrl;
 type Extorsion = {
   months: string[];
   rows: Record<string, number[]>;
+  population?: Record<string, Record<string, number>>;
 };
 
 const TILES_URL =
   import.meta.env.VITE_TILES_URL ??
   new URL(`${import.meta.env.BASE_URL}peru.pmtiles`, document.baseURI).href;
 const COLORS = ["#ffffb2", "#fecc5c", "#fd8d3c", "#f03b20", "#bd0026"];
+const GREY = "#9e9e9e";
+const POB_MINIMA = 1000;
 
 const MESES = [
   "ene",
@@ -66,33 +69,78 @@ const startLabel = document.querySelector<HTMLOutputElement>("#label-inicio")!;
 const endLabel = document.querySelector<HTMLOutputElement>("#label-fin")!;
 const legend = document.querySelector<HTMLElement>("#legend")!;
 const fuente = document.querySelector<HTMLElement>("#fuente")!;
+const medidaBox = document.querySelector<HTMLElement>("#medida")!;
+const medidaButtons =
+  document.querySelectorAll<HTMLButtonElement>("#medida button");
+
+type Medida = "tasa" | "denuncias";
+let medida: Medida = extorsion.population ? "tasa" : "denuncias";
+medidaBox.hidden = !extorsion.population;
+medidaButtons.forEach((button) => {
+  button.setAttribute("aria-pressed", String(button.dataset.medida === medida));
+  button.addEventListener("click", () => {
+    medida = button.dataset.medida as Medida;
+    medidaButtons.forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === button)),
+    );
+    update();
+  });
+});
 
 startInput.max = endInput.max = String(months.length - 1);
 startInput.value = String(Math.max(0, months.length - 12));
 endInput.value = String(months.length - 1);
-fuente.textContent = `Fuente: SIDPOL (PNP) · datosabiertos.gob.pe · ODC-By · datos a ${mesLabel(months[months.length - 1])}`;
+fuente.textContent = `Fuente: SIDPOL (PNP) · datosabiertos.gob.pe · población: Instituto Nacional de Estadística e Informática · ODC-By · datos a ${mesLabel(months[months.length - 1])}`;
 
-function rangeTotals(lo: number, hi: number): Map<string, number> {
-  const totals = new Map<string, number>();
-  for (const [ubigeo, counts] of Object.entries(rows)) {
-    let total = 0;
+type Metric = {
+  total: number;
+  rate: number | null;
+  poblacion: number | null;
+};
+
+function metricFor(ubigeo: string, lo: number, hi: number): Metric {
+  const counts = rows[ubigeo];
+  let total = 0;
+  if (counts) {
     for (let i = lo; i <= hi && i < counts.length; i++) total += counts[i];
-    totals.set(ubigeo, total);
   }
-  return totals;
+
+  const pop = extorsion.population?.[ubigeo];
+  if (!pop) return { total, rate: null, poblacion: null };
+  const monthsByYear = new Map<number, number>();
+  for (let i = lo; i <= hi; i++) {
+    const year = Number(months[i].slice(0, 4));
+    monthsByYear.set(year, (monthsByYear.get(year) ?? 0) + 1);
+  }
+  let personYears = 0;
+  for (const [year, count] of monthsByYear) {
+    const p = pop[String(year)];
+    if (p === undefined) return { total, rate: null, poblacion: null };
+    personYears += (p * count) / 12;
+  }
+  return {
+    total,
+    rate: (total / personYears) * 100000,
+    poblacion: (personYears * 12) / (hi - lo + 1),
+  };
 }
 
-function quantileBreaks(totals: number[]): number[] {
-  const sorted = [...totals].sort((a, b) => a - b);
-  const breaks = new Set<number>();
+function smallPop(m: Metric): boolean {
+  return m.poblacion === null || m.poblacion < POB_MINIMA;
+}
+
+function quantileBreaks(values: number[]): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  const breaks: number[] = [];
   for (let k = 1; k < COLORS.length; k++) {
     const index = Math.min(
       sorted.length - 1,
       Math.floor((k * sorted.length) / COLORS.length),
     );
-    breaks.add(sorted[index]);
+    const v = Math.round(sorted[index]);
+    if (breaks.length === 0 || v > breaks[breaks.length - 1]) breaks.push(v);
   }
-  return [...breaks].sort((a, b) => a - b);
+  return breaks;
 }
 
 function colorFor(total: number, breaks: number[]): string {
@@ -199,15 +247,34 @@ function update(): void {
   startLabel.value = mesLabel(months[lo]);
   endLabel.value = mesLabel(months[hi]);
 
-  const totals = rangeTotals(lo, hi);
-  const breaks = quantileBreaks([...totals.values()]);
+  const metrics = new Map<string, Metric>();
+  const values: number[] = [];
+  for (const feature of districts.features) {
+    const ubigeo = String(feature.properties?.ubigeo);
+    const m = metricFor(ubigeo, lo, hi);
+    metrics.set(ubigeo, m);
+    if (medida === "tasa") {
+      if (m.rate !== null && !smallPop(m)) values.push(m.rate);
+    } else {
+      values.push(m.total);
+    }
+  }
+  const breaks = quantileBreaks(values);
 
   const match: unknown[] = ["match", ["get", "ubigeo"]];
   for (const feature of districts.features) {
     const ubigeo = String(feature.properties?.ubigeo);
-    match.push(ubigeo, colorFor(totals.get(ubigeo) ?? 0, breaks));
+    const m = metrics.get(ubigeo)!;
+    // The classes and their labels are whole numbers, so the value is
+    // classified after the same rounding the labels show.
+    const raw = medida === "tasa" ? (m.rate ?? 0) : m.total;
+    const color =
+      medida === "tasa" && smallPop(m)
+        ? GREY
+        : colorFor(Math.round(raw), breaks);
+    match.push(ubigeo, color);
   }
-  match.push(COLORS[0]);
+  match.push(medida === "tasa" ? GREY : COLORS[0]);
   map.setPaintProperty(
     "districts-fill",
     "fill-color",
@@ -215,12 +282,12 @@ function update(): void {
   );
 
   const edges = [0, ...breaks, Infinity];
-  legend.replaceChildren(
-    ...COLORS.slice(0, breaks.length + 1).map((color, i) => {
-      const low = edges[i];
+  const legendRows: HTMLElement[] = COLORS.slice(0, breaks.length + 1).map(
+    (color, i) => {
+      const low = i === 0 ? 0 : edges[i] + 1;
       const high = edges[i + 1];
       const text = !Number.isFinite(high)
-        ? `más de ${low}`
+        ? `más de ${edges[i]}`
         : low === high
           ? `${low}`
           : `${low} – ${high}`;
@@ -231,8 +298,25 @@ function update(): void {
       swatch.style.background = color;
       row.append(swatch, document.createTextNode(text));
       return row;
-    }),
+    },
   );
+  const unit = document.createElement("div");
+  unit.className = "row unidad";
+  unit.textContent =
+    medida === "tasa" ? "por 100 000 habitantes" : "denuncias en el periodo";
+  if (medida === "tasa") {
+    const row = document.createElement("div");
+    row.className = "row";
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = GREY;
+    row.append(
+      swatch,
+      document.createTextNode("menos de 1 000 hab. o sin población"),
+    );
+    legendRows.push(row);
+  }
+  legend.replaceChildren(unit, ...legendRows);
 }
 
 function sparkline(counts: number[]): SVGSVGElement {
@@ -265,18 +349,31 @@ map.on("click", "districts-fill", (event: MapLayerMouseEvent) => {
   const nombre = String(feature.properties?.nombre ?? ubigeo);
   const counts = rows[ubigeo] ?? months.map(() => 0);
   const [lo, hi] = currentRange();
-  const total = counts.slice(lo, hi + 1).reduce((a, b) => a + b, 0);
+  const m = metricFor(ubigeo, lo, hi);
 
   const content = document.createElement("div");
   const title = document.createElement("h2");
   title.textContent = nombre;
   const totalLine = document.createElement("p");
   totalLine.className = "total";
-  totalLine.textContent = `${total.toLocaleString("es-PE")} denuncias`;
+  totalLine.textContent = `${m.total.toLocaleString("es-PE")} denuncias`;
+  content.append(title, totalLine);
+  if (m.rate !== null) {
+    const rateLine = document.createElement("p");
+    rateLine.className = "total";
+    rateLine.textContent = `${Math.round(m.rate).toLocaleString("es-PE")} por 100 000 hab.`;
+    content.append(rateLine);
+  }
+  if (m.poblacion !== null) {
+    const popLine = document.createElement("p");
+    popLine.className = "total";
+    popLine.textContent = `${Math.round(m.poblacion).toLocaleString("es-PE")} habitantes`;
+    content.append(popLine);
+  }
   const caption = document.createElement("p");
   caption.className = "total";
   caption.textContent = `${mesLabel(months[lo])} – ${mesLabel(months[hi])}`;
-  content.append(title, totalLine, caption, sparkline(counts));
+  content.append(caption, sparkline(counts));
   new maplibregl.Popup().setLngLat(event.lngLat).setDOMContent(content).addTo(map);
 });
 
