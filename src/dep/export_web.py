@@ -6,6 +6,7 @@ Polygons are simplified until the gzipped GeoJSON fits under GZIP_LIMIT bytes.
 """
 
 import gzip
+import importlib.resources
 import json
 import math
 from pathlib import Path
@@ -22,6 +23,11 @@ IGN_GEOMETRY_PAGE_SIZE = 500
 GZIP_LIMIT = 3 * 1024 * 1024
 DISTRICTS_NAME = "districts.geojson"
 EXTORSION_NAME = "extorsion.json"
+
+# The IGN district layer stores empty geometries for 040101 (Arequipa) and
+# 040126 (Yanahuara). The patch polygons come from the OCHA COD-AB release of
+# the same IGN boundaries.
+PATCH_NAME = "ign_geometry_patch.geojson"
 
 
 def _ring_area(ring: list[list[float]]) -> float:
@@ -81,6 +87,7 @@ def fetch_districts_geojson(client: RobotsCheckedClient, url: str) -> dict[str, 
                 "outFields": "UBIGEO,NOMBDIST,NOMBPROV,NOMBDEP",
                 "returnGeometry": "true",
                 "outSR": 4326,
+                "orderByFields": "OBJECTID",
                 "resultOffset": offset,
                 "resultRecordCount": IGN_GEOMETRY_PAGE_SIZE,
                 "f": "json",
@@ -125,6 +132,25 @@ def load_geojson_file(path: Path) -> dict[str, Any]:
 
 def _district_ubigeo(props: dict[str, Any]) -> str:
     return str(props.get("UBIGEO") or props.get("ubigeo") or "").zfill(6)
+
+
+def apply_geometry_patch(collection: dict[str, Any]) -> None:
+    """Fill empty district geometries from the bundled patch file."""
+    patch = {
+        f["properties"]["ubigeo"]: f["geometry"]
+        for f in json.loads(
+            importlib.resources.files("dep")
+            .joinpath(PATCH_NAME)
+            .read_text(encoding="utf-8")
+        )["features"]
+    }
+    for feature in collection["features"]:
+        geometry = feature.get("geometry") or {}
+        if geometry.get("coordinates"):
+            continue
+        ubigeo = _district_ubigeo(feature.get("properties") or {})
+        if ubigeo in patch:
+            feature["geometry"] = patch[ubigeo]
 
 
 def normalize_features(collection: dict[str, Any]) -> dict[str, Any]:
@@ -305,7 +331,19 @@ def run(
             collection = fetch_districts_geojson(
                 RobotsCheckedClient(raw_client, USER_AGENT), ign_url or IGN_URL
             )
+    apply_geometry_patch(collection)
+    ign_codes = {
+        _district_ubigeo(props)
+        for f in collection["features"]
+        if (props := f.get("properties") or {}).get("UBIGEO") or props.get("ubigeo")
+    }
     kept = write_districts(collection, out_dir / DISTRICTS_NAME)
+    missing = ign_codes - kept
+    if missing:
+        raise RuntimeError(
+            "IGN districts missing from districts.geojson: "
+            + ", ".join(sorted(missing))
+        )
 
     population: dict[str, dict[str, int]] | None = None
     if population_path is not None and population_path.exists():
