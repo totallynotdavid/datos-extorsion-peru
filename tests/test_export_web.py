@@ -65,9 +65,22 @@ def write_parquet(path: Path) -> None:
     )
 
 
+def write_population(path: Path) -> None:
+    duckdb.execute(
+        "COPY (SELECT * FROM (VALUES "
+        "('010202', 2018, 9000), "
+        "('150101', 2018, 300000), "
+        "('160405', 2018, 1000)) "
+        "t(ubigeo, anio, poblacion)) "
+        f"TO '{path}' (FORMAT PARQUET)"
+    )
+
+
 def test_export_web_writes_both_files(tmp_path: Path) -> None:
     parquet = tmp_path / "extorsion_distrito_mes.parquet"
     write_parquet(parquet)
+    population = tmp_path / "poblacion_distrito_anio.parquet"
+    write_population(population)
     ign = tmp_path / "ign.geojson"
     ign.write_text(json.dumps(IGN_GEOJSON), encoding="utf-8")
     out_dir = tmp_path / "data"
@@ -80,6 +93,8 @@ def test_export_web_writes_both_files(tmp_path: Path) -> None:
             "export-web",
             "--parquet",
             str(parquet),
+            "--population",
+            str(population),
             "--ign-file",
             str(ign),
             "--out-dir",
@@ -89,6 +104,8 @@ def test_export_web_writes_both_files(tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    # 160405 exists in the INEI table but not in the IGN catalog.
+    assert "1 INEI district" in result.stdout
 
     districts = json.loads((out_dir / "districts.geojson").read_text())
     assert {f["properties"]["ubigeo"] for f in districts["features"]} == {
@@ -106,3 +123,7 @@ def test_export_web_writes_both_files(tmp_path: Path) -> None:
     assert extorsion["months"] == ["2018-01", "2018-02", "2018-03"]
     assert extorsion["rows"]["010202"] == [5, 0, 2]
     assert extorsion["rows"]["150101"] == [0, 3, 0]
+    assert extorsion["population"] == {
+        "010202": {"2018": 9000},
+        "150101": {"2018": 300000},
+    }
