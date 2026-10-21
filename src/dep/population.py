@@ -15,7 +15,8 @@ import duckdb
 import httpx
 from python_calamine import load_workbook
 
-from dep.sidpol import USER_AGENT, RobotsCheckedClient
+from dep.http import RobotsCheckedClient
+from dep.sidpol import USER_AGENT
 
 WORKBOOK_URL = (
     "https://cdn.www.gob.pe/uploads/document/file/8261096/"
@@ -112,7 +113,7 @@ def run(
             with httpx.Client(
                 headers={"User-Agent": USER_AGENT}, timeout=60
             ) as raw_client:
-                client = RobotsCheckedClient(raw_client)
+                client = RobotsCheckedClient(raw_client, USER_AGENT)
                 with client.stream(url) as response:
                     response.raise_for_status()
                     with path.open("wb") as fh:
