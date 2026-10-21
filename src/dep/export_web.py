@@ -217,7 +217,8 @@ def _quantize(collection: dict[str, Any], digits: int = 5) -> None:
         )
 
 
-def write_districts(collection: dict[str, Any], out_path: Path) -> None:
+def write_districts(collection: dict[str, Any], out_path: Path) -> set[str]:
+    """Write the simplified polygons and return the exported UBIGEO codes."""
     tolerance = 0.0005
     while True:
         candidate = normalize_features(collection)
@@ -227,7 +228,7 @@ def write_districts(collection: dict[str, Any], out_path: Path) -> None:
         if len(gzip.compress(payload)) <= GZIP_LIMIT or tolerance >= 0.1:
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_bytes(payload)
-            return
+            return {str(f["properties"]["ubigeo"]) for f in candidate["features"]}
         tolerance *= 4
 
 
@@ -243,7 +244,22 @@ def _month_axis(bounds: tuple[int, int, int, int]) -> list[str]:
     return months
 
 
-def write_extorsion(parquet_path: Path, out_path: Path) -> dict[str, Any]:
+def load_population(path: Path) -> dict[str, dict[str, int]]:
+    con = duckdb.connect()
+    out: dict[str, dict[str, int]] = {}
+    for ubigeo, anio, poblacion in con.execute(
+        "SELECT ubigeo, anio, poblacion FROM read_parquet(?)", [str(path)]
+    ).fetchall():
+        out.setdefault(str(ubigeo), {})[str(anio)] = int(poblacion)
+    con.close()
+    return out
+
+
+def write_extorsion(
+    parquet_path: Path,
+    out_path: Path,
+    population: dict[str, dict[str, int]] | None = None,
+) -> dict[str, Any]:
     con = duckdb.connect()
     first = con.execute(
         "SELECT anio, mes FROM read_parquet(?) ORDER BY anio, mes LIMIT 1",
@@ -266,7 +282,9 @@ def write_extorsion(parquet_path: Path, out_path: Path) -> dict[str, Any]:
         index = (anio - first[0]) * 12 + (mes - first[1])
         rows.setdefault(str(ubigeo), [0] * len(months))[index] = int(denuncias)
     con.close()
-    payload = {"months": months, "rows": rows}
+    payload: dict[str, Any] = {"months": months, "rows": rows}
+    if population is not None:
+        payload["population"] = population
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     return payload
@@ -275,6 +293,7 @@ def write_extorsion(parquet_path: Path, out_path: Path) -> dict[str, Any]:
 def run(
     out_dir: Path,
     parquet_path: Path,
+    population_path: Path | None = None,
     ign_file: Path | None = None,
     ign_url: str | None = None,
 ) -> None:
@@ -287,5 +306,23 @@ def run(
             collection = fetch_districts_geojson(
                 RobotsCheckedClient(raw_client), ign_url or IGN_URL
             )
-    write_districts(collection, out_dir / DISTRICTS_NAME)
-    write_extorsion(parquet_path, out_dir / EXTORSION_NAME)
+    kept = write_districts(collection, out_dir / DISTRICTS_NAME)
+
+    population: dict[str, dict[str, int]] | None = None
+    if population_path is not None and population_path.exists():
+        population = load_population(population_path)
+        dropped = len(set(population) - kept)
+        population = {
+            ubigeo: years for ubigeo, years in population.items() if ubigeo in kept
+        }
+        if dropped:
+            print(
+                f"warning: dropped {dropped} INEI districts absent from "
+                "the IGN catalog",
+            )
+    elif population_path is not None:
+        print(
+            f"warning: {population_path} not found; extorsion.json has no "
+            "population data",
+        )
+    write_extorsion(parquet_path, out_dir / EXTORSION_NAME, population)
