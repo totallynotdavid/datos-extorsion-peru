@@ -6,15 +6,14 @@ table.
 
 import json
 import tempfile
-import urllib.robotparser
-from collections.abc import Iterable, Iterator
-from contextlib import contextmanager
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import urlsplit
 
 import duckdb
 import httpx
+
+from dep.http import RobotsCheckedClient
 
 USER_AGENT = "datos-extorsion-peru/0.1"
 CATALOG_URL = "https://www.datosabiertos.gob.pe/api/3/action/package_show"
@@ -26,44 +25,6 @@ IGN_URL = (
 )
 IGN_PAGE_SIZE = 1000
 OUTPUT_NAME = "extorsion_distrito_mes.parquet"
-
-
-class RobotsCheckedClient:
-    """HTTP client that fetches each host's robots.txt once and refuses any
-    request to a path it disallows."""
-
-    def __init__(self, client: httpx.Client) -> None:
-        self._client = client
-        self._parsers: dict[str, urllib.robotparser.RobotFileParser] = {}
-
-    def _parser(self, origin: str) -> urllib.robotparser.RobotFileParser:
-        if origin not in self._parsers:
-            parser = urllib.robotparser.RobotFileParser()
-            response = self._client.get(f"{origin}/robots.txt")
-            if response.status_code == 200:
-                parser.parse(response.text.splitlines())
-            elif response.status_code in (401, 403):
-                parser.parse(["User-agent: *", "Disallow: /"])
-            else:
-                parser.parse(["User-agent: *", "Disallow:"])
-            self._parsers[origin] = parser
-        return self._parsers[origin]
-
-    def _require_allowed(self, url: str) -> None:
-        parts = urlsplit(url)
-        origin = f"{parts.scheme}://{parts.netloc}"
-        if not self._parser(origin).can_fetch(USER_AGENT, url):
-            raise RuntimeError(f"robots.txt at {origin} disallows {url}")
-
-    def get(self, url: str, **kwargs: Any) -> httpx.Response:
-        self._require_allowed(url)
-        return self._client.get(url, **kwargs)
-
-    @contextmanager
-    def stream(self, url: str, **kwargs: Any) -> Iterator[httpx.Response]:
-        self._require_allowed(url)
-        with self._client.stream("GET", url, **kwargs) as response:
-            yield response
 
 
 def resolve_csv_url(client: RobotsCheckedClient) -> str:
@@ -193,7 +154,7 @@ def run(
 ) -> Path:
     with tempfile.TemporaryDirectory() as work_dir:
         with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as raw_client:
-            client = RobotsCheckedClient(raw_client)
+            client = RobotsCheckedClient(raw_client, USER_AGENT)
             if csv_file is not None:
                 csv_path = csv_file
             else:
