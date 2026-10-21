@@ -1,0 +1,108 @@
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import duckdb
+
+IGN_GEOJSON = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "UBIGEO": "150101",
+                "NOMBDIST": "LIMA",
+                "NOMBPROV": "LIMA",
+                "NOMBDEP": "LIMA",
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-77.1, -12.0],
+                        [-76.9, -12.0],
+                        [-76.9, -12.2],
+                        [-77.1, -12.2],
+                        [-77.1, -12.0],
+                    ]
+                ],
+            },
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "UBIGEO": "010202",
+                "NOMBDIST": "ARAMANGO",
+                "NOMBPROV": "BAGUA",
+                "NOMBDEP": "AMAZONAS",
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-78.5, -5.5],
+                        [-78.3, -5.5],
+                        [-78.3, -5.7],
+                        [-78.5, -5.7],
+                        [-78.5, -5.5],
+                    ]
+                ],
+            },
+        },
+    ],
+}
+
+
+def write_parquet(path: Path) -> None:
+    duckdb.execute(
+        "COPY (SELECT * FROM (VALUES "
+        "('010202', 'ARAMANGO', 'BAGUA', 'AMAZONAS', 2018, 1, 5), "
+        "('010202', 'ARAMANGO', 'BAGUA', 'AMAZONAS', 2018, 3, 2), "
+        "('150101', 'LIMA', 'LIMA', 'LIMA', 2018, 2, 3)) "
+        "t(ubigeo, distrito, provincia, departamento, anio, mes, denuncias)) "
+        f"TO '{path}' (FORMAT PARQUET)"
+    )
+
+
+def test_export_web_writes_both_files(tmp_path: Path) -> None:
+    parquet = tmp_path / "extorsion_distrito_mes.parquet"
+    write_parquet(parquet)
+    ign = tmp_path / "ign.geojson"
+    ign.write_text(json.dumps(IGN_GEOJSON), encoding="utf-8")
+    out_dir = tmp_path / "data"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "dep",
+            "export-web",
+            "--parquet",
+            str(parquet),
+            "--ign-file",
+            str(ign),
+            "--out-dir",
+            str(out_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+    districts = json.loads((out_dir / "districts.geojson").read_text())
+    assert {f["properties"]["ubigeo"] for f in districts["features"]} == {
+        "010202",
+        "150101",
+    }
+    lima = next(
+        f for f in districts["features"] if f["properties"]["ubigeo"] == "150101"
+    )
+    assert lima["properties"]["nombre"] == "LIMA"
+    ring = lima["geometry"]["coordinates"][0]
+    assert ring[0] == ring[-1]
+
+    extorsion = json.loads((out_dir / "extorsion.json").read_text())
+    assert extorsion["months"] == ["2018-01", "2018-02", "2018-03"]
+    assert extorsion["rows"]["010202"] == [5, 0, 2]
+    assert extorsion["rows"]["150101"] == [0, 3, 0]
