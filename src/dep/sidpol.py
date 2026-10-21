@@ -64,6 +64,7 @@ def fetch_districts(client: RobotsCheckedClient, url: str) -> list[dict[str, Any
                 "where": "1=1",
                 "outFields": "UBIGEO,NOMBDIST,NOMBPROV,NOMBDEP",
                 "returnGeometry": "false",
+                "orderByFields": "OBJECTID",
                 "resultOffset": offset,
                 "resultRecordCount": IGN_PAGE_SIZE,
                 "f": "json",
