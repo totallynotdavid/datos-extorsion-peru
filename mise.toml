@@ -2,6 +2,8 @@
 python = "3.13"
 uv = "0.13.1"
 oxfmt = "0.74.0"
+node = "26"
+"github:protomaps/go-pmtiles" = "1.31.2"
 
 [tasks.install]
 description = "Install the locked dependencies into .venv"
@@ -38,3 +40,26 @@ run = "uv run pytest"
 [tasks.check]
 description = "Run lint, typecheck and test without writing"
 depends = ["lint", "typecheck", "test"]
+
+[tasks.web-install]
+description = "Install the web app dependencies"
+run = "npm --prefix web ci --no-audit --no-fund"
+
+[tasks.web-dev]
+description = "Start the Vite dev server"
+depends = ["web-install"]
+run = "npm --prefix web run dev"
+
+[tasks.web-build]
+description = "Build the static site into web/dist"
+depends = ["web-install"]
+run = "npm --prefix web run build"
+
+[tasks.web-test]
+description = "Build the site and run the Playwright tests against it"
+depends = ["web-install"]
+run = "npm --prefix web test"
+
+[tasks.web-tiles]
+description = "Download the Protomaps Peru extract into web/public/peru.pmtiles"
+run = "pmtiles extract https://build.protomaps.com/20261020.pmtiles web/public/peru.pmtiles --bbox=-81.4,-18.4,-68.6,0.1 --maxzoom=14"

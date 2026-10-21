@@ -1,0 +1,78 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+#panel {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 17rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font-size: 0.85rem;
+  color: #222;
+}
+
+#panel h1 {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+}
+
+#slider input[type="range"] {
+  width: 100%;
+  margin: 0.15rem 0;
+}
+
+#slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
+#legend {
+  margin-top: 0.6rem;
+}
+
+#legend .swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 0.8rem;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+#legend .row {
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+}
+
+#fuente {
+  margin: 0.7rem 0 0;
+  font-size: 0.72rem;
+  color: #555;
+}
+
+.maplibregl-popup-content h2 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+.maplibregl-popup-content .total {
+  margin: 0 0 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.maplibregl-popup-content svg {
+  display: block;
+}

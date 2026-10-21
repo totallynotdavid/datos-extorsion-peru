@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Denuncias de extorsión por distrito</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="map"></div>
+    <aside id="panel">
+      <h1>Denuncias de extorsión por distrito</h1>
+      <div id="slider">
+        <div id="slider-labels">
+          <output id="label-inicio"></output>
+          <output id="label-fin"></output>
+        </div>
+        <input id="mes-inicio" type="range" min="0" step="1" />
+        <input id="mes-fin" type="range" min="0" step="1" />
+      </div>
+      <div id="legend"></div>
+      <p id="fuente"></p>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

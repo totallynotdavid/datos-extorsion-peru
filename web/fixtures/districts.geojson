@@ -1,0 +1,110 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150101",
+        "nombre": "LIMA",
+        "provincia": "LIMA",
+        "departamento": "LIMA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.2, -11.8],
+            [-77.0, -11.8],
+            [-77.0, -12.2],
+            [-77.2, -12.2],
+            [-77.2, -11.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150102",
+        "nombre": "ATE",
+        "provincia": "LIMA",
+        "departamento": "LIMA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.0, -11.8],
+            [-76.8, -11.8],
+            [-76.8, -12.2],
+            [-77.0, -12.2],
+            [-77.0, -11.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150103",
+        "nombre": "SAN JUAN DE LURIGANCHO",
+        "provincia": "LIMA",
+        "departamento": "LIMA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-76.8, -11.8],
+            [-76.6, -11.8],
+            [-76.6, -12.2],
+            [-76.8, -12.2],
+            [-76.8, -11.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150104",
+        "nombre": "CALLAO",
+        "provincia": "CALLAO",
+        "departamento": "CALLAO"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.2, -12.2],
+            [-77.0, -12.2],
+            [-77.0, -12.5],
+            [-77.2, -12.5],
+            [-77.2, -12.2]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "010202",
+        "nombre": "ARAMANGO",
+        "provincia": "BAGUA",
+        "departamento": "AMAZONAS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-76.6, -12.2],
+            [-76.4, -12.2],
+            [-76.4, -12.5],
+            [-76.6, -12.5],
+            [-76.6, -12.2]
+          ]
+        ]
+      }
+    }
+  ]
+}
