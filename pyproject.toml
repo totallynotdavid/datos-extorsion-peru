@@ -7,6 +7,7 @@ readme = "README.md"
 dependencies = [
     "duckdb>=1.4.0",
     "httpx>=0.28.0",
+    "python-calamine>=0.8.3,<0.9",
 ]
 
 [project.scripts]

@@ -84,6 +84,7 @@ source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "httpx" },
+    { name = "python-calamine" },
 ]
 
 [package.dev-dependencies]
@@ -97,6 +98,7 @@ dev = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.4.0" },
     { name = "httpx", specifier = ">=0.28.0" },
+    { name = "python-calamine", specifier = ">=0.8.3,<0.9" },
 ]
 
 [package.metadata.requires-dev]
@@ -281,6 +283,28 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
+]
+
+[[package]]
+name = "python-calamine"
+version = "0.8.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/5e/05248d4ebdc2568b2ab0fc354ede490ddbb360e195f59442486763da4404/python_calamine-0.8.3.tar.gz", hash = "sha256:93dba488baad15bb2daed4bf45007ec550a3905aa4d39f764d1573290b72961c", size = 217244, upload-time = "2026-10-09T10:26:20.99Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/3a/a590db543b5a1b43a1959157474e0f2c68b5df73a21cd3b800695f96c053/python_calamine-0.8.3-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:eb5f6f4b8e34d71151a50673f3c3886051ef78749b471e35b64b95ac0530636e", size = 874493, upload-time = "2026-10-09T10:25:04.311Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/5a/f6456015b6ee4313cb0887fbdaabbeaebff01b53b23772da6b656e80d44c/python_calamine-0.8.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:6cbecb00dc8d7b8c892ef04458b370b815cad92dd8699f2d9b023700dd6b5170", size = 854545, upload-time = "2026-10-09T10:25:05.644Z" },
+    { url = "https://files.pythonhosted.org/packages/67/91/bef5113a9fa60434be5b46cb5046c358a7338e25fe371a514158f113cf93/python_calamine-0.8.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:150dcd406fb54fddc0f1d92bb6e3f69bd529ec9194c90c65f160eccd11685642", size = 929200, upload-time = "2026-10-09T10:25:07.117Z" },
+    { url = "https://files.pythonhosted.org/packages/68/f7/8d6b79e1abad9c60ca9f7cc36fea93856681c0c3a6b48c30be0c42420788/python_calamine-0.8.3-cp313-cp313-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:39d45c41ae34c64ccb1a8941ef8bea8b0e90e1f1047c6aa68375af403d2fdb7e", size = 921156, upload-time = "2026-10-09T10:25:08.478Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/11/fb8ee3c364eb866f246731d7627bae6aba1216001cd22cab84f6a4655bab/python_calamine-0.8.3-cp313-cp313-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:b7540f88efacc1b9bc5f1c9554b5c313fe47f1330414984cf96baf8a4b63e44e", size = 1085303, upload-time = "2026-10-09T10:25:10.278Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/e0/e96dec42a7e960fa680cdea57a755dafb746c89e03efc2783446a9f89441/python_calamine-0.8.3-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:a293869604990264326cd1f6c676e37a4cd9706f7702bfdfae831dfd0a6ca670", size = 995687, upload-time = "2026-10-09T10:25:11.673Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/1f/eca925511a8537c109c135ea32efa39de3a660b5345266ee72c0c1fc9bd1/python_calamine-0.8.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:51359906a25a8b26a225663eb1f2b026f6a5f48d4a0528f55c36677d8894727f", size = 936228, upload-time = "2026-10-09T10:25:13.161Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/07/cc4fd25a0b32f940d853c42a8a1b706ef5ab95a65eed9c45a69584a8bed9/python_calamine-0.8.3-cp313-cp313-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:4250864419d4eb4d56e09922290d5096f546100b8ff8018f7fc2e134bd8404e6", size = 995434, upload-time = "2026-10-09T10:25:14.589Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/08/4ed37cdcdd1eb23d762c281cad5520981f8bef0171aab0cc4cea867e78bc/python_calamine-0.8.3-cp313-cp313-musllinux_1_1_aarch64.whl", hash = "sha256:64621385bf9be48c3b099d7786dccefef9a67f0322ad472a7cc584081c4444a3", size = 1106621, upload-time = "2026-10-09T10:25:16.12Z" },
+    { url = "https://files.pythonhosted.org/packages/95/36/1a0be1eaa7c1cad0a41916a30d30aab0043b8a531c386bfc5a4e9c81d06b/python_calamine-0.8.3-cp313-cp313-musllinux_1_1_armv7l.whl", hash = "sha256:9e24ea2e915fdf8090016de578fd6dc5d4ea04f595ffe4b303c1397f9b721a86", size = 1195437, upload-time = "2026-10-09T10:25:17.844Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/dd/cd100f36c0eac21eacadf30dd1a5bdebc41c4d86c10314100277353d4b61/python_calamine-0.8.3-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:61e5f7df629310311218bee07e4a9b561432685cded1c62cdde52b3e1faeccd2", size = 1149747, upload-time = "2026-10-09T10:25:19.218Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/a4/50cf661d21da1464fe824e1697df7ed13e345b12a17210935dbd6de94676/python_calamine-0.8.3-cp313-cp313-win32.whl", hash = "sha256:b295527aed256557ddc1acc16cf988be6c5493cae9306c708d4e2637364702dd", size = 731532, upload-time = "2026-10-09T10:25:20.899Z" },
+    { url = "https://files.pythonhosted.org/packages/48/eb/7330453d121093c0f99e028d8999a078f4be55da504276a74b2314ba7c0a/python_calamine-0.8.3-cp313-cp313-win_amd64.whl", hash = "sha256:9a81c051b40a3cd40902208b406a90248b51fb13dc60a41e514a67e0b175518c", size = 782372, upload-time = "2026-10-09T10:25:22.609Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/b8/97942441a5603bead41c1c00b50cb396cba1cb9ad3d594cee457872c356a/python_calamine-0.8.3-cp313-cp313-win_arm64.whl", hash = "sha256:2a9094fedab09c55b4fed4b7925c0f816fc0487af9c5de2f922b29005322cef7", size = 752178, upload-time = "2026-10-09T10:25:24.105Z" },
 ]
 
 [[package]]

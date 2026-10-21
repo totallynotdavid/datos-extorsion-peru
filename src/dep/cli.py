@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from dep import export_web, sidpol
+from dep import export_web, population, sidpol
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -43,6 +43,27 @@ def main(argv: list[str] | None = None) -> None:
         help="Query this ArcGIS FeatureServer URL instead of the IGN default.",
     )
 
+    population_cmd = commands.add_parser(
+        "population",
+        help="Download the INEI district population projections workbook and "
+        "write the district x year population table to data/out/.",
+    )
+    population_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet file (default: data/out).",
+    )
+    population_cmd.add_argument(
+        "--xlsx-file",
+        type=Path,
+        help="Read the projections workbook from this path instead of downloading it.",
+    )
+    population_cmd.add_argument(
+        "--xlsx-url",
+        help="Download the workbook from this URL instead of the INEI default.",
+    )
+
     export_cmd = commands.add_parser(
         "export-web",
         help="Build web/public/data/districts.geojson and extorsion.json from "
@@ -60,6 +81,13 @@ def main(argv: list[str] | None = None) -> None:
         default=Path("data/out/extorsion_distrito_mes.parquet"),
         help="District x month table (default: "
         "data/out/extorsion_distrito_mes.parquet).",
+    )
+    export_cmd.add_argument(
+        "--population",
+        type=Path,
+        default=Path("data/out/poblacion_distrito_anio.parquet"),
+        help="District x year population table (default: "
+        "data/out/poblacion_distrito_anio.parquet).",
     )
     export_cmd.add_argument(
         "--ign-file",
@@ -85,11 +113,22 @@ def main(argv: list[str] | None = None) -> None:
         except RuntimeError as exc:
             raise SystemExit(f"dep: error: {exc}") from exc
         print(out)
+    elif args.command == "population":
+        try:
+            out = population.run(
+                out_dir=args.out_dir,
+                xlsx_file=args.xlsx_file,
+                xlsx_url=args.xlsx_url,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(out)
     elif args.command == "export-web":
         try:
             export_web.run(
                 out_dir=args.out_dir,
                 parquet_path=args.parquet,
+                population_path=args.population,
                 ign_file=args.ign_file,
                 ign_url=args.ign_url,
             )
