@@ -127,3 +127,72 @@ def test_export_web_writes_both_files(tmp_path: Path) -> None:
         "010202": {"2018": 9000},
         "150101": {"2018": 300000},
     }
+
+
+def run_export(
+    parquet: Path, ign: Path, out_dir: Path
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "dep",
+            "export-web",
+            "--parquet",
+            str(parquet),
+            "--population",
+            str(parquet.parent / "no_population.parquet"),
+            "--ign-file",
+            str(ign),
+            "--out-dir",
+            str(out_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+
+def empty_feature(ubigeo: str) -> dict[str, object]:
+    return {
+        "type": "Feature",
+        "properties": {
+            "UBIGEO": ubigeo,
+            "NOMBDIST": "EMPTY",
+            "NOMBPROV": "P",
+            "NOMBDEP": "D",
+        },
+        "geometry": {"type": "Polygon", "coordinates": []},
+    }
+
+
+def test_export_web_patches_ign_empty_geometry(tmp_path: Path) -> None:
+    parquet = tmp_path / "extorsion_distrito_mes.parquet"
+    write_parquet(parquet)
+    collection = json.loads(json.dumps(IGN_GEOJSON))
+    # The IGN layer returns empty geometries for 040101 and 040126.
+    collection["features"].append(empty_feature("040101"))
+    ign = tmp_path / "ign.geojson"
+    ign.write_text(json.dumps(collection), encoding="utf-8")
+    out_dir = tmp_path / "data"
+
+    result = run_export(parquet, ign, out_dir)
+    assert result.returncode == 0, result.stderr
+
+    districts = json.loads((out_dir / "districts.geojson").read_text())
+    arequipa = next(
+        f for f in districts["features"] if f["properties"]["ubigeo"] == "040101"
+    )
+    assert arequipa["geometry"]["coordinates"]
+
+
+def test_export_web_fails_on_missing_ign_code(tmp_path: Path) -> None:
+    parquet = tmp_path / "extorsion_distrito_mes.parquet"
+    write_parquet(parquet)
+    collection = json.loads(json.dumps(IGN_GEOJSON))
+    collection["features"].append(empty_feature("999999"))
+    ign = tmp_path / "ign.geojson"
+    ign.write_text(json.dumps(collection), encoding="utf-8")
+
+    result = run_export(parquet, ign, tmp_path / "data")
+    assert result.returncode != 0
+    assert "999999" in result.stderr
