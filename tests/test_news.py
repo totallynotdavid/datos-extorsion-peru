@@ -480,6 +480,20 @@ def test_robots_txt_is_obeyed(site: Site, tmp_path: Path) -> None:
     assert "/exitosa/crimen/extorsionadores-queman-combi-n1" not in site.paths()
 
 
+def test_rate_limited_robots_txt_stops_the_source(site: Site, tmp_path: Path) -> None:
+    fill_site(site)
+    site.add("/robots.txt", "slow down", status=429)
+
+    result = run_news(
+        site, tmp_path, "--from", "2026-09", "--to", "2026-09", "--source", "exitosa"
+    )
+
+    assert result.returncode != 0
+    assert f"{site.base}/robots.txt" in result.stderr
+    assert "429" in result.stderr
+    assert site.paths() == ["/robots.txt"]
+
+
 def test_rerun_replaces_the_range_and_keeps_other_months(
     site: Site, tmp_path: Path
 ) -> None:
