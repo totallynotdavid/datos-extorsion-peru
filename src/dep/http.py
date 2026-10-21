@@ -40,6 +40,8 @@ class RobotsCheckedClient:
                 response = self._client.get(robots_url)
             except httpx.HTTPError as exc:
                 raise RuntimeError(f"{robots_url}: {exc}") from exc
+            if response.status_code == 429:
+                raise RuntimeError(f"{robots_url}: HTTP 429, source stopped")
             if response.status_code == 200:
                 parser.parse(response.text.splitlines())
             elif response.status_code in (401, 403):

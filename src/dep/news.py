@@ -252,24 +252,33 @@ class _TagListing(HTMLParser):
 
 
 class Fetcher:
-    """GET with the stop rules: any failure names the URL and ends the source."""
+    """GET that turns any failure into a SourceError naming the URL."""
 
     def __init__(self, client: RobotsCheckedClient) -> None:
         self._client = client
 
-    def get(
-        self,
-        url: str,
-        params: dict[str, Any] | None = None,
-        *,
-        missing_ok: bool = False,
+    def get(self, url: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        response = self._send(url, params)
+        if response is None:
+            full = str(httpx.URL(url, params=params))
+            raise SourceError(f"{full}: HTTP 404")
+        return response
+
+    def get_or_none(
+        self, url: str, params: dict[str, Any] | None = None
+    ) -> httpx.Response | None:
+        """Return None on a 404. Any other failure still raises."""
+        return self._send(url, params)
+
+    def _send(
+        self, url: str, params: dict[str, Any] | None = None
     ) -> httpx.Response | None:
         full = str(httpx.URL(url, params=params))
         try:
             response = self._client.get(full)
         except httpx.HTTPError as exc:
             raise SourceError(f"{full}: {exc}") from exc
-        if response.status_code == 404 and missing_ok:
+        if response.status_code == 404:
             return None
         if response.status_code in (403, 429):
             raise SourceError(f"{full}: HTTP {response.status_code}, source stopped")
@@ -292,7 +301,6 @@ def page_text(response: httpx.Response) -> str:
 
 def fetch_article(fetch: Fetcher, url: str, region: str | None) -> Article:
     response = fetch.get(url)
-    assert response is not None
     markup = page_text(response)
     page = parse_page(url, markup)
     return Article(url, page.published, page.title, region, page.text, markup)
@@ -307,7 +315,7 @@ def collect_exitosa(
     """Monthly sitemaps list every article. Only slugs with `extors` are fetched."""
     for year, month in month_range(start, end):
         sitemap = f"{base}/sitemapNoticias{year}{month:02d}.xml"
-        response = fetch.get(sitemap, missing_ok=True)
+        response = fetch.get_or_none(sitemap)
         if response is None:
             print(f"warning: no sitemap at {sitemap}", file=sys.stderr)
             continue
@@ -326,7 +334,7 @@ def collect_correo(
     page = 1
     while True:
         url = f"{base}/noticias/extorsion/" + (f"{page}/" if page > 1 else "")
-        response = fetch.get(url, missing_ok=True)
+        response = fetch.get_or_none(url)
         if response is None:
             return
         listing = _TagListing()
@@ -370,7 +378,6 @@ def collect_wordpress(
                 "page": page,
             },
         )
-        assert response is not None
         if page == 1:
             try:
                 total_pages = int(response.headers["X-WP-TotalPages"])
