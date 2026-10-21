@@ -1,7 +1,24 @@
 import argparse
+from datetime import date, timedelta
 from pathlib import Path
 
-from dep import export_web, population, sidpol
+from dep import export_web, news, population, sidpol
+
+
+def _month(text: str) -> date:
+    try:
+        year, month = text.split("-")
+        if len(year) != 4 or len(month) != 2:
+            raise ValueError
+        return date(int(year), int(month), 1)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected YYYY-MM, got {text!r}") from None
+
+
+def _month_end(first: date) -> date:
+    return (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(
+        days=1
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -100,8 +117,76 @@ def main(argv: list[str] | None = None) -> None:
         help="Query this ArcGIS FeatureServer URL instead of the IGN default.",
     )
 
+    news_cmd = commands.add_parser(
+        "news",
+        help="Collect candidate extortion articles from four Peruvian outlets "
+        "into data/out/news_candidates.parquet.",
+    )
+    news_cmd.add_argument(
+        "--from",
+        dest="start",
+        type=_month,
+        required=True,
+        metavar="YYYY-MM",
+        help="First month to collect.",
+    )
+    news_cmd.add_argument(
+        "--to",
+        dest="end",
+        type=_month,
+        required=True,
+        metavar="YYYY-MM",
+        help="Last month to collect.",
+    )
+    news_cmd.add_argument(
+        "--source",
+        action="append",
+        choices=list(news.SOURCES),
+        help="Collect only this source. Repeat for several (default: all).",
+    )
+    news_cmd.add_argument(
+        "--source-url",
+        action="append",
+        default=[],
+        metavar="NAME=URL",
+        help="Fetch source NAME from this base URL instead of its outlet.",
+    )
+    news_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet file (default: data/out).",
+    )
+    news_cmd.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=Path("data/raw/news"),
+        help="Directory for the raw article HTML (default: data/raw/news).",
+    )
+
     args = parser.parse_args(argv)
-    if args.command == "sidpol":
+    if args.command == "news":
+        if args.start > args.end:
+            parser.error("--from is after --to")
+        base_urls: dict[str, str] = {}
+        for item in args.source_url:
+            name, _, url = item.partition("=")
+            if name not in news.SOURCES or not url:
+                parser.error(f"--source-url expects NAME=URL, got {item!r}")
+            base_urls[name] = url
+        try:
+            out = news.run(
+                out_dir=args.out_dir,
+                raw_dir=args.raw_dir,
+                start=args.start,
+                end=_month_end(args.end),
+                sources=list(dict.fromkeys(args.source or news.SOURCES)),
+                base_urls=base_urls,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(out)
+    elif args.command == "sidpol":
         try:
             out = sidpol.run(
                 out_dir=args.out_dir,
