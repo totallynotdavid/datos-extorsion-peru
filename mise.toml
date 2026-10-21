@@ -1,0 +1,40 @@
+[tools]
+python = "3.13"
+uv = "0.13.1"
+oxfmt = "0.74.0"
+
+[tasks.install]
+description = "Install the locked dependencies into .venv"
+run = "uv sync --locked --group dev"
+
+[tasks."lint:py"]
+description = "Check Python lint and formatting with ruff"
+run = ["uv run ruff check --no-fix .", "uv run ruff format --check ."]
+
+[tasks."lint:md"]
+description = "Check Markdown formatting with oxfmt"
+run = "oxfmt --check --no-error-on-unmatched-pattern '**/*.md' '!README.md'"
+
+[tasks.lint]
+description = "Run every static check without writing"
+depends = ["lint:*"]
+
+[tasks.format]
+description = "Format and apply safe fixes to every file type"
+run = [
+  "uv run ruff format .",
+  "uv run ruff check --fix .",
+  "oxfmt --write --no-error-on-unmatched-pattern '**/*.md' '!README.md'",
+]
+
+[tasks.typecheck]
+description = "Type-check src and tests with mypy strict"
+run = "uv run mypy src tests"
+
+[tasks.test]
+description = "Run the test suite"
+run = "uv run pytest"
+
+[tasks.check]
+description = "Run lint, typecheck and test without writing"
+depends = ["lint", "typecheck", "test"]

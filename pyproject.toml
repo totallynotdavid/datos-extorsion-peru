@@ -1,0 +1,40 @@
+[project]
+name = "dep"
+version = "0.1.0"
+description = "Open data pipeline for crime and extortion events in Peru"
+requires-python = ">=3.13,<3.14"
+readme = "README.md"
+dependencies = [
+    "duckdb>=1.4.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+dep = "dep.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "dep"
+module-root = "src"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.0",
+    "pytest>=8.4.0",
+    "ruff>=0.13.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = ["__pycache__", "dist", "build", "data"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "I", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
