@@ -14,7 +14,8 @@ from typing import Any, cast
 import duckdb
 import httpx
 
-from dep.sidpol import IGN_URL, RobotsCheckedClient
+from dep.http import RobotsCheckedClient
+from dep.sidpol import IGN_URL, USER_AGENT
 
 IGN_GEOMETRY_PAGE_SIZE = 500
 
@@ -300,11 +301,9 @@ def run(
     if ign_file is not None:
         collection = load_geojson_file(ign_file)
     else:
-        with httpx.Client(
-            headers={"User-Agent": "datos-extorsion-peru/0.1"}, timeout=60
-        ) as raw_client:
+        with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as raw_client:
             collection = fetch_districts_geojson(
-                RobotsCheckedClient(raw_client), ign_url or IGN_URL
+                RobotsCheckedClient(raw_client, USER_AGENT), ign_url or IGN_URL
             )
     kept = write_districts(collection, out_dir / DISTRICTS_NAME)
 
