@@ -16,6 +16,39 @@ test("la vista por defecto muestra la tasa y el deslizador la recalcula", async 
   await expect(legend).toContainText("más de 110");
 });
 
+test("la leyenda separa el cero y pinta cada distrito según su clase", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const legend = page.locator("#legend");
+
+  // Five classes: "0", three non-overlapping ranges and "más de 90", plus the
+  // grey row for districts without population data.
+  const swatches = legend.locator(".swatch");
+  await expect(swatches).toHaveCount(6);
+  await expect(legend).toContainText("1 – 75");
+  await expect(legend).toContainText("76 – 78");
+  await expect(legend).toContainText("79 – 90");
+  await expect(legend).toContainText("más de 90");
+
+  // Lima rounds to a rate of 78, so its fill is the third class colour.
+  const limaFill = await page.evaluate(() => {
+    const match = (
+      window as unknown as {
+        __map: {
+          getPaintProperty(l: string, p: string): unknown[];
+        };
+      }
+    ).__map.getPaintProperty("districts-fill", "fill-color");
+    return match[match.indexOf("150101") + 1];
+  });
+  expect(limaFill).toBe("#fd8d3c");
+  await expect(swatches.nth(2)).toHaveCSS(
+    "background-color",
+    "rgb(253, 141, 60)",
+  );
+});
+
 test("el conmutador cambia la leyenda a denuncias", async ({ page }) => {
   await page.goto("/");
   const legend = page.locator("#legend");
@@ -23,6 +56,8 @@ test("el conmutador cambia la leyenda a denuncias", async ({ page }) => {
 
   await page.locator("#medida button[data-medida='denuncias']").click();
   await expect(legend).toContainText("denuncias en el periodo");
+  await expect(legend.locator(".swatch")).toHaveCount(5);
+  await expect(legend).toContainText("1 – 54");
   await expect(legend).toContainText("más de 235");
   await expect(legend).not.toContainText("1 000 hab.");
 });
