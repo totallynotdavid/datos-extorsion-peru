@@ -130,15 +130,19 @@ function smallPop(m: Metric): boolean {
 }
 
 function quantileBreaks(values: number[]): number[] {
-  const sorted = [...values].sort((a, b) => a - b);
-  const breaks: number[] = [];
-  for (let k = 1; k < COLORS.length; k++) {
+  // Most districts have no denuncias, so zero gets its own class and the
+  // remaining colours split the positive values into quantiles.
+  const positive = values.filter((v) => v > 0).sort((a, b) => a - b);
+  const hasZero = positive.length < values.length;
+  const classes = hasZero ? COLORS.length - 1 : COLORS.length;
+  const breaks: number[] = hasZero ? [0] : [];
+  for (let k = 1; k < classes; k++) {
     const index = Math.min(
-      sorted.length - 1,
-      Math.floor((k * sorted.length) / COLORS.length),
+      positive.length - 1,
+      Math.floor((k * positive.length) / classes),
     );
-    const v = Math.round(sorted[index]);
-    if (breaks.length === 0 || v > breaks[breaks.length - 1]) breaks.push(v);
+    const v = Math.round(positive[index]);
+    if (v > (breaks[breaks.length - 1] ?? 0)) breaks.push(v);
   }
   return breaks;
 }
