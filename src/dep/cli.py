@@ -2,7 +2,7 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
-from dep import export_web, news, population, sidpol
+from dep import export_web, extract, news, population, sidpol
 
 
 def _month(text: str) -> date:
@@ -164,6 +164,41 @@ def main(argv: list[str] | None = None) -> None:
         help="Directory for the raw article HTML (default: data/raw/news).",
     )
 
+    extract_cmd = commands.add_parser(
+        "extract",
+        help="Extract extortion events from news candidates into "
+        "data/out/news_events.parquet.",
+    )
+    extract_cmd.add_argument(
+        "--candidates",
+        type=Path,
+        default=Path("data/out/news_candidates.parquet"),
+        help="Candidate Parquet file (default: data/out/news_candidates.parquet).",
+    )
+    extract_cmd.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=Path("data/raw/news"),
+        help="Directory for raw article HTML (default: data/raw/news).",
+    )
+    extract_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet file (default: data/out).",
+    )
+    extract_cmd.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Process at most this many articles (default: 10).",
+    )
+    extract_cmd.add_argument(
+        "--force",
+        action="store_true",
+        help="Reprocess URLs that already have rows from this model.",
+    )
+
     args = parser.parse_args(argv)
     if args.command == "news":
         if args.start > args.end:
@@ -182,6 +217,20 @@ def main(argv: list[str] | None = None) -> None:
                 end=_month_end(args.end),
                 sources=list(dict.fromkeys(args.source or news.SOURCES)),
                 base_urls=base_urls,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(out)
+    elif args.command == "extract":
+        if args.limit < 0:
+            parser.error("--limit must not be negative")
+        try:
+            out = extract.run(
+                candidates_path=args.candidates,
+                raw_dir=args.raw_dir,
+                out_dir=args.out_dir,
+                limit=args.limit,
+                force=args.force,
             )
         except RuntimeError as exc:
             raise SystemExit(f"dep: error: {exc}") from exc

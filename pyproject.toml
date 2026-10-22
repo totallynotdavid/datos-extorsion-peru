@@ -5,6 +5,7 @@ description = "Open data pipeline for crime and extortion events in Peru"
 requires-python = ">=3.13,<3.14"
 readme = "README.md"
 dependencies = [
+    "anthropic>=0.75.0",
     "duckdb>=1.4.0",
     "httpx>=0.28.0",
     "python-calamine>=0.8.3,<0.9",
