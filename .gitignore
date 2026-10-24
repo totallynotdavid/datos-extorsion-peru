@@ -3,7 +3,11 @@ __pycache__/
 *.egg-info/
 data/
 web/node_modules/
+worker/node_modules/
+.wrangler/
+.cloudflare/
 web/dist/
 web/test-results/
 web/playwright-report/
 web/public/peru.pmtiles
+web/public/data/

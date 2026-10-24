@@ -62,4 +62,34 @@ run = "npm --prefix web test"
 
 [tasks.web-tiles]
 description = "Download the Protomaps Peru extract into web/public/peru.pmtiles"
-run = "pmtiles extract https://build.protomaps.com/20261020.pmtiles web/public/peru.pmtiles --bbox=-81.4,-18.4,-68.6,0.1 --maxzoom=14"
+run = [
+  "mkdir -p web/public",
+  "pmtiles extract https://build.protomaps.com/20261020.pmtiles web/public/peru.pmtiles --bbox=-81.4,-18.4,-68.6,0.1 --maxzoom=13",
+]
+
+[tasks.worker-install]
+description = "Install the worker dependencies"
+run = "npm --prefix worker ci --no-audit --no-fund"
+
+[tasks.worker-test]
+description = "Type-check the worker and run it locally in workerd against a simulated R2 bucket"
+depends = ["worker-install"]
+run = ["npm --prefix worker run typecheck", "npm --prefix worker test"]
+
+[tasks.deploy]
+description = "Build the site and deploy the worker; needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID"
+depends = ["web-build", "worker-install"]
+run = "worker/node_modules/.bin/wrangler deploy"
+
+[tasks.data-publish]
+description = "Upload the exported map data in web/public/data to the R2 bucket; needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID"
+depends = ["worker-install"]
+run = [
+  "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/districts.geojson --remote --file web/public/data/districts.geojson --content-type application/geo+json",
+  "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/extorsion.json --remote --file web/public/data/extorsion.json --content-type application/json",
+]
+
+[tasks.tiles-publish]
+description = "Upload web/public/peru.pmtiles to the R2 bucket; needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID"
+depends = ["worker-install"]
+run = "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/peru.pmtiles --remote --file web/public/peru.pmtiles --content-type application/octet-stream"
