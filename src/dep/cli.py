@@ -2,7 +2,7 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
-from dep import export_web, extract, news, population, sidpol
+from dep import export_web, extract, news, population, sidpol, sidpol_live
 
 
 def _month(text: str) -> date:
@@ -58,6 +58,35 @@ def main(argv: list[str] | None = None) -> None:
     sidpol_cmd.add_argument(
         "--ign-url",
         help="Query this ArcGIS FeatureServer URL instead of the IGN default.",
+    )
+
+    live_cmd = commands.add_parser(
+        "sidpol-live",
+        help="Read the live SIDPOL ArcGIS layer and write the district x month "
+        "x shift and police sector x month extortion tables to data/out/.",
+    )
+    live_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet files (default: data/out).",
+    )
+    live_cmd.add_argument(
+        "--url",
+        default=sidpol_live.LAYER_URL,
+        help="Query this ArcGIS layer URL instead of the Mininter default.",
+    )
+    live_cmd.add_argument(
+        "--csv-table",
+        type=Path,
+        help="District x month table from `dep sidpol` to compare against "
+        "(default: extorsion_distrito_mes.parquet in --out-dir).",
+    )
+    live_cmd.add_argument(
+        "--delay",
+        type=float,
+        default=sidpol_live.DELAY,
+        help=f"Seconds between requests (default: {sidpol_live.DELAY}).",
     )
 
     population_cmd = commands.add_parser(
@@ -247,6 +276,20 @@ def main(argv: list[str] | None = None) -> None:
         except RuntimeError as exc:
             raise SystemExit(f"dep: error: {exc}") from exc
         print(out)
+    elif args.command == "sidpol-live":
+        if args.delay < 0:
+            parser.error("--delay must not be negative")
+        try:
+            district_path, sector_path = sidpol_live.run(
+                out_dir=args.out_dir,
+                url=args.url,
+                csv_table=args.csv_table,
+                delay=args.delay,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(district_path)
+        print(sector_path)
     elif args.command == "population":
         try:
             out = population.run(
