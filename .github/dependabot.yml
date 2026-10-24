@@ -3,6 +3,19 @@ updates:
   - package-ecosystem: npm
     directories:
       - /web
+      - /worker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
       interval: weekly
     cooldown:
