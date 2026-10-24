@@ -26,6 +26,12 @@ beforeAll(async () => {
   await env.BUCKET.put("data/extorsion.json", '{"months":[]}', {
     httpMetadata: { contentType: "application/json" },
   });
+  await env.BUCKET.put("data/turnos.json", '{"months":[],"rows":[]}', {
+    httpMetadata: { contentType: "application/json" },
+  });
+  await env.BUCKET.put("data/victimas.json", '{"year":2024}', {
+    httpMetadata: { contentType: "application/json" },
+  });
 });
 
 describe("range requests on /peru.pmtiles", () => {
@@ -120,10 +126,16 @@ describe("headers on every served object", () => {
   });
 
   it("serves the data files with their content type", async () => {
-    const res = await get("/data/extorsion.json");
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toBe("application/json");
-    expect(await res.json()).toEqual({ months: [] });
+    for (const [path, body] of [
+      ["/data/extorsion.json", { months: [] }],
+      ["/data/turnos.json", { months: [], rows: [] }],
+      ["/data/victimas.json", { year: 2024 }],
+    ] as const) {
+      const res = await get(path);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toBe("application/json");
+      expect(await res.json()).toEqual(body);
+    }
   });
 });
 

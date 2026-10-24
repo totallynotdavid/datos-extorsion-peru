@@ -69,7 +69,11 @@ test("clic en un distrito muestra conteo, tasa y población", async ({
   await expect(page.locator("#legend")).toContainText("más de 90");
 
   const point = await page.evaluate(() => {
-    const map = (window as { __map: { project(c: [number, number]): { x: number; y: number } } }).__map;
+    const map = (
+      window as {
+        __map: { project(c: [number, number]): { x: number; y: number } };
+      }
+    ).__map;
     return map.project([-77.1, -12.0]);
   });
   await page.mouse.click(point.x, point.y);
@@ -80,4 +84,53 @@ test("clic en un distrito muestra conteo, tasa y población", async ({
   await expect(popup).toContainText("78 por 100 000 hab.");
   await expect(popup).toContainText("habitantes");
   await expect(popup.locator("svg polyline")).toBeVisible();
+});
+
+test("carga el panel de turnos después del primer clic", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await page.goto("/");
+  await expect(page.locator("#legend")).toContainText("más de 90");
+  expect(requests.some((url) => url.endsWith("/turnos.json"))).toBe(false);
+
+  const point = await page.evaluate(() => {
+    const map = (
+      window as {
+        __map: { project(c: [number, number]): { x: number; y: number } };
+      }
+    ).__map;
+    return map.project([-77.1, -12.0]);
+  });
+  await page.mouse.click(point.x, point.y);
+
+  const popup = page.locator(".maplibregl-popup");
+  await expect(popup).toContainText("Cuándo se reporta");
+  await expect(popup.locator(".bar-row")).toHaveCount(5);
+  await expect(popup).toContainText("Noche");
+  expect(requests.some((url) => url.endsWith("/turnos.json"))).toBe(true);
+  expect(requests.some((url) => url.endsWith("/victimas.json"))).toBe(false);
+});
+
+test("muestra el perfil de víctimas solo para Callao", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#legend")).toContainText("más de 90");
+  const point = await page.evaluate(() => {
+    const map = (
+      window as {
+        __map: { project(c: [number, number]): { x: number; y: number } };
+      }
+    ).__map;
+    return map.project([-77.1, -12.35]);
+  });
+  await page.mouse.click(point.x, point.y);
+
+  const popup = page.locator(".maplibregl-popup");
+  await expect(popup).toContainText("Perfil de las víctimas");
+  await expect(popup).toContainText(
+    "Solo provincia constitucional del Callao, datos de 2024",
+  );
+  await expect(popup).toContainText("Ocupación");
+  await expect(
+    popup.locator(".detail-panel").nth(1).locator(".bar-row"),
+  ).toHaveCount(6);
 });
