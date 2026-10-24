@@ -2,7 +2,16 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
-from dep import callao, export_web, extract, news, population, sidpol, sidpol_live
+from dep import (
+    callao,
+    dedup,
+    export_web,
+    extract,
+    news,
+    population,
+    sidpol,
+    sidpol_live,
+)
 
 
 def _month(text: str) -> date:
@@ -263,6 +272,25 @@ def main(argv: list[str] | None = None) -> None:
         help="Reprocess URLs that already have rows from this model.",
     )
 
+    dedup_cmd = commands.add_parser(
+        "dedup",
+        help="Merge extracted events that report the same incident into "
+        "data/out/news_events_dedup.parquet.",
+    )
+    dedup_cmd.add_argument(
+        "--events",
+        type=Path,
+        default=Path("data/out") / dedup.INPUT_NAME,
+        help="Events Parquet file from `dep extract` "
+        "(default: data/out/news_events.parquet).",
+    )
+    dedup_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet file (default: data/out).",
+    )
+
     args = parser.parse_args(argv)
     if args.command == "news":
         if args.start > args.end:
@@ -296,6 +324,12 @@ def main(argv: list[str] | None = None) -> None:
                 limit=args.limit,
                 force=args.force,
             )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(out)
+    elif args.command == "dedup":
+        try:
+            out = dedup.run(events_path=args.events, out_dir=args.out_dir)
         except RuntimeError as exc:
             raise SystemExit(f"dep: error: {exc}") from exc
         print(out)
