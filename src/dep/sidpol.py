@@ -46,6 +46,30 @@ def resolve_csv_url(client: RobotsCheckedClient) -> str:
     raise RuntimeError(f"No cumulative denuncias CSV found in dataset {DATASET_ID}")
 
 
+def resolve_dataset_csv_url(
+    client: RobotsCheckedClient, catalog_url: str, dataset_id: str
+) -> str:
+    """Return the download URL of the one CSV resource of a catalog dataset.
+
+    The published file name changes with each release, so the URL comes from
+    the catalog record.
+    """
+    response = client.get(catalog_url, params={"id": dataset_id})
+    response.raise_for_status()
+    result = response.json()["result"]
+    dataset = result[0] if isinstance(result, list) else result
+    urls = [
+        str(resource["url"])
+        for resource in dataset["resources"]
+        if str(resource.get("format", "")).lower().lstrip(".") == "csv"
+    ]
+    if len(urls) != 1:
+        raise RuntimeError(
+            f"expected one CSV resource in dataset {dataset_id}, found {len(urls)}"
+        )
+    return urls[0]
+
+
 def download_csv(client: RobotsCheckedClient, url: str, dest: Path) -> None:
     with client.stream(url) as response:
         response.raise_for_status()

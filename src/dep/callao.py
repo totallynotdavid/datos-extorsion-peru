@@ -15,7 +15,12 @@ import duckdb
 import httpx
 
 from dep.http import RobotsCheckedClient
-from dep.sidpol import CATALOG_URL, USER_AGENT, download_csv
+from dep.sidpol import (
+    CATALOG_URL,
+    USER_AGENT,
+    download_csv,
+    resolve_dataset_csv_url,
+)
 
 DATASET_ID = (
     "registros-de-hechos-delictivos-en-la-provincia-constitucional-del-callao-"
@@ -204,28 +209,6 @@ def occupation_group(text: str | None) -> str:
     return UNMAPPED
 
 
-def resolve_csv_url(client: RobotsCheckedClient, catalog_url: str) -> str:
-    """Return the download URL of the dataset's CSV resource.
-
-    The published file name changes with each release, so the URL comes from
-    the catalog record.
-    """
-    response = client.get(catalog_url, params={"id": DATASET_ID})
-    response.raise_for_status()
-    result = response.json()["result"]
-    dataset = result[0] if isinstance(result, list) else result
-    urls = [
-        str(resource["url"])
-        for resource in dataset["resources"]
-        if str(resource.get("format", "")).lower().lstrip(".") == "csv"
-    ]
-    if len(urls) != 1:
-        raise RuntimeError(
-            f"expected one CSV resource in dataset {DATASET_ID}, found {len(urls)}"
-        )
-    return urls[0]
-
-
 def _load_facts(con: duckdb.DuckDBPyConnection, csv_path: Path) -> None:
     """Read the extract into `facts`, one row per reported fact in range, with
     the sex, age band and occupation group already coded. The run log counts
@@ -378,7 +361,7 @@ def run(
     with tempfile.TemporaryDirectory() as work_dir:
         with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as raw_client:
             client = RobotsCheckedClient(raw_client, USER_AGENT, delay)
-            url = csv_url or resolve_csv_url(client, catalog_url)
+            url = csv_url or resolve_dataset_csv_url(client, catalog_url, DATASET_ID)
             csv_path = Path(work_dir) / "callao.csv"
             print(f"downloading {url}")
             try:
