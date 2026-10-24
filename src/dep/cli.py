@@ -7,6 +7,7 @@ from dep import (
     dedup,
     export_web,
     extract,
+    inpe,
     news,
     piura,
     population,
@@ -97,6 +98,30 @@ def main(argv: list[str] | None = None) -> None:
         type=float,
         default=sidpol_live.DELAY,
         help=f"Seconds between requests (default: {sidpol_live.DELAY}).",
+    )
+
+    inpe_cmd = commands.add_parser(
+        "inpe",
+        help="Read INPE's prison population ArcGIS layer and write the offence "
+        "group x legal status x sex x age band x home district inmate tables, "
+        "for extortion and for all offences, to data/out/.",
+    )
+    inpe_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet files (default: data/out).",
+    )
+    inpe_cmd.add_argument(
+        "--url",
+        default=inpe.LAYER_URL,
+        help="Query this ArcGIS layer URL instead of the INPE default.",
+    )
+    inpe_cmd.add_argument(
+        "--delay",
+        type=float,
+        default=inpe.DELAY,
+        help=f"Seconds between requests (default: {inpe.DELAY}).",
     )
 
     callao_cmd = commands.add_parser(
@@ -423,6 +448,17 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(f"dep: error: {exc}") from exc
         print(district_path)
         print(sector_path)
+    elif args.command == "inpe":
+        if args.delay < 0:
+            parser.error("--delay must not be negative")
+        try:
+            all_path, extortion_path = inpe.run(
+                out_dir=args.out_dir, url=args.url, delay=args.delay
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(all_path)
+        print(extortion_path)
     elif args.command == "population":
         try:
             out = population.run(
