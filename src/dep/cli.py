@@ -240,6 +240,27 @@ def main(argv: list[str] | None = None) -> None:
         "data/out/poblacion_distrito_anio.parquet).",
     )
     export_cmd.add_argument(
+        "--shift-parquet",
+        type=Path,
+        default=Path("data/out/extorsion_live_distrito_mes_turno.parquet"),
+        help="District x month x shift table (default: "
+        "data/out/extorsion_live_distrito_mes_turno.parquet).",
+    )
+    export_cmd.add_argument(
+        "--victim-sex-age-parquet",
+        type=Path,
+        default=Path("data/out/victimas_sexo_edad_mes.parquet"),
+        help="Callao victim sex x age table (default: "
+        "data/out/victimas_sexo_edad_mes.parquet).",
+    )
+    export_cmd.add_argument(
+        "--victim-occupation-parquet",
+        type=Path,
+        default=Path("data/out/victimas_ocupacion_mes.parquet"),
+        help="Callao victim occupation table (default: "
+        "data/out/victimas_ocupacion_mes.parquet).",
+    )
+    export_cmd.add_argument(
         "--ign-file",
         type=Path,
         help="Read IGN district polygons from this GeoJSON file instead of "
@@ -475,6 +496,9 @@ def main(argv: list[str] | None = None) -> None:
                 out_dir=args.out_dir,
                 parquet_path=args.parquet,
                 population_path=args.population,
+                shift_path=args.shift_parquet,
+                victim_sex_age_path=args.victim_sex_age_parquet,
+                victim_occupation_path=args.victim_occupation_parquet,
                 ign_file=args.ign_file,
                 ign_url=args.ign_url,
             )

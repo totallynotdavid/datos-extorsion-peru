@@ -107,3 +107,74 @@ body {
 .maplibregl-popup-content svg {
   display: block;
 }
+
+.detail-panel {
+  min-width: 15rem;
+  margin-top: 0.8rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #ddd;
+}
+
+.detail-panel h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+.detail-panel h4 {
+  margin: 0.6rem 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.detail-panel p {
+  margin: 0.25rem 0;
+}
+
+.bar-chart {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 6.3rem 1fr 2rem;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 0.65rem;
+  background: #edf0f1;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  min-width: 0.15rem;
+  background: #bd0026;
+}
+
+.bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.few-data,
+.loading,
+.error,
+.privacy-note {
+  color: #555;
+  font-size: 0.72rem;
+}
+
+.privacy-note {
+  line-height: 1.35;
+}

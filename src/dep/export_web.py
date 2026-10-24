@@ -23,6 +23,10 @@ IGN_GEOMETRY_PAGE_SIZE = 500
 GZIP_LIMIT = 3 * 1024 * 1024
 DISTRICTS_NAME = "districts.geojson"
 EXTORSION_NAME = "extorsion.json"
+SHIFT_NAME = "turnos.json"
+VICTIM_NAME = "victimas.json"
+MIN_CELL = 5
+VICTIM_YEAR = 2024
 
 # The IGN district layer stores empty geometries for 040101 (Arequipa) and
 # 040126 (Yanahuara). The patch polygons come from the OCHA COD-AB release of
@@ -317,10 +321,91 @@ def write_extorsion(
     return payload
 
 
+def write_shifts(parquet_path: Path, out_path: Path) -> dict[str, Any]:
+    """Write publishable district/month/shift cells from the live table.
+
+    Cells under MIN_CELL are left out so the web artifact cannot identify a
+    small district-level group. The district code is the only geographic key
+    needed to join these rows to the public district polygons.
+    """
+    con = duckdb.connect()
+    first = con.execute(
+        "SELECT anio, mes FROM read_parquet(?) "
+        "WHERE anio IS NOT NULL AND mes IS NOT NULL "
+        "ORDER BY anio, mes LIMIT 1",
+        [str(parquet_path)],
+    ).fetchone()
+    last = con.execute(
+        "SELECT anio, mes FROM read_parquet(?) "
+        "WHERE anio IS NOT NULL AND mes IS NOT NULL "
+        "ORDER BY anio DESC, mes DESC LIMIT 1",
+        [str(parquet_path)],
+    ).fetchone()
+    if first is None or last is None:
+        con.close()
+        raise RuntimeError(f"{parquet_path} has no dated rows")
+    months = _month_axis((int(first[0]), int(first[1]), int(last[0]), int(last[1])))
+    records = [
+        {
+            "ubigeo": str(ubigeo),
+            "mes": f"{int(anio):04d}-{int(mes):02d}",
+            "turno": str(turno or "sin_dato"),
+            "denuncias": int(denuncias),
+        }
+        for ubigeo, anio, mes, turno, denuncias in con.execute(
+            "SELECT ubigeo, anio, mes, turno, denuncias "
+            "FROM read_parquet(?) "
+            "WHERE ubigeo IS NOT NULL AND denuncias >= ? "
+            "ORDER BY ubigeo, anio, mes, turno",
+            [str(parquet_path), MIN_CELL],
+        ).fetchall()
+    ]
+    con.close()
+    payload = {"months": months, "rows": records}
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    return payload
+
+
+def write_victims(
+    sex_age_path: Path, occupation_path: Path, out_path: Path
+) -> dict[str, Any]:
+    """Write the 2024 Callao extortion victim-profile aggregates."""
+    con = duckdb.connect()
+    sex_age = [
+        {"sexo": str(sexo), "banda_edad": str(banda), "denuncias": int(denuncias)}
+        for sexo, banda, denuncias in con.execute(
+            "SELECT sexo, banda_edad, SUM(denuncias) AS denuncias "
+            "FROM read_parquet(?) "
+            "WHERE delito = 'extorsion' AND anio = ? AND denuncias >= ? "
+            "GROUP BY sexo, banda_edad ORDER BY sexo, banda_edad",
+            [str(sex_age_path), VICTIM_YEAR, MIN_CELL],
+        ).fetchall()
+    ]
+    occupation = [
+        {"ocupacion": str(group), "denuncias": int(denuncias)}
+        for group, denuncias in con.execute(
+            "SELECT ocupacion, SUM(denuncias) AS denuncias "
+            "FROM read_parquet(?) "
+            "WHERE delito = 'extorsion' AND anio = ? AND denuncias >= ? "
+            "GROUP BY ocupacion ORDER BY ocupacion",
+            [str(occupation_path), VICTIM_YEAR, MIN_CELL],
+        ).fetchall()
+    ]
+    con.close()
+    payload = {"year": VICTIM_YEAR, "sex_age": sex_age, "occupation": occupation}
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    return payload
+
+
 def run(
     out_dir: Path,
     parquet_path: Path,
     population_path: Path | None = None,
+    shift_path: Path = Path("data/out/extorsion_live_distrito_mes_turno.parquet"),
+    victim_sex_age_path: Path = Path("data/out/victimas_sexo_edad_mes.parquet"),
+    victim_occupation_path: Path = Path("data/out/victimas_ocupacion_mes.parquet"),
     ign_file: Path | None = None,
     ign_url: str | None = None,
 ) -> None:
@@ -363,3 +448,5 @@ def run(
             "population data",
         )
     write_extorsion(parquet_path, out_dir / EXTORSION_NAME, population)
+    write_shifts(shift_path, out_dir / SHIFT_NAME)
+    write_victims(victim_sex_age_path, victim_occupation_path, out_dir / VICTIM_NAME)

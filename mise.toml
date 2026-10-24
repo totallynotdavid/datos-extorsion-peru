@@ -87,6 +87,8 @@ depends = ["worker-install"]
 run = [
   "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/districts.geojson --remote --file web/public/data/districts.geojson --content-type application/geo+json",
   "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/extorsion.json --remote --file web/public/data/extorsion.json --content-type application/json",
+  "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/turnos.json --remote --file web/public/data/turnos.json --content-type application/json",
+  "worker/node_modules/.bin/wrangler r2 object put extorsion-tiles/data/victimas.json --remote --file web/public/data/victimas.json --content-type application/json",
 ]
 
 [tasks.tiles-publish]

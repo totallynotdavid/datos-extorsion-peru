@@ -17,6 +17,14 @@ const OBJECTS: Record<string, { key: string; cacheControl: string }> = {
     key: "data/extorsion.json",
     cacheControl: "public, max-age=3600",
   },
+  "/data/turnos.json": {
+    key: "data/turnos.json",
+    cacheControl: "public, max-age=3600",
+  },
+  "/data/victimas.json": {
+    key: "data/victimas.json",
+    cacheControl: "public, max-age=3600",
+  },
 };
 
 const CORS = {

@@ -16,6 +16,22 @@ type Extorsion = {
   population?: Record<string, Record<string, number>>;
 };
 
+type ShiftData = {
+  months: string[];
+  rows: {
+    ubigeo: string;
+    mes: string;
+    turno: string;
+    denuncias: number;
+  }[];
+};
+
+type VictimData = {
+  year: number;
+  sex_age: { sexo: string; banda_edad: string; denuncias: number }[];
+  occupation: { ocupacion: string; denuncias: number }[];
+};
+
 const TILES_URL =
   import.meta.env.VITE_TILES_URL ??
   new URL(`${import.meta.env.BASE_URL}peru.pmtiles`, document.baseURI).href;
@@ -53,6 +69,25 @@ async function fetchFirst(paths: string[]): Promise<unknown> {
     }
   }
   throw new Error(`no se pudo cargar ${paths[0]}`);
+}
+
+let shiftDataPromise: Promise<ShiftData> | null = null;
+let victimDataPromise: Promise<VictimData> | null = null;
+
+function loadShiftData(): Promise<ShiftData> {
+  shiftDataPromise ??= fetchFirst([
+    "data/turnos.json",
+    "fixtures/turnos.json",
+  ]).then((data) => data as ShiftData);
+  return shiftDataPromise;
+}
+
+function loadVictimData(): Promise<VictimData> {
+  victimDataPromise ??= fetchFirst([
+    "data/victimas.json",
+    "fixtures/victimas.json",
+  ]).then((data) => data as VictimData);
+  return victimDataPromise;
 }
 
 const [districts, extorsion] = (await Promise.all([
@@ -157,7 +192,11 @@ const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
 const basemapLayers: maplibregl.LayerSpecification[] = [
-  { id: "background", type: "background", paint: { "background-color": "#dde5e9" } },
+  {
+    id: "background",
+    type: "background",
+    paint: { "background-color": "#dde5e9" },
+  },
   {
     id: "earth",
     type: "fill",
@@ -184,7 +223,11 @@ const basemapLayers: maplibregl.LayerSpecification[] = [
     type: "line",
     source: "protomaps",
     "source-layer": "boundaries",
-    paint: { "line-color": "#9aa4a8", "line-width": 0.8, "line-dasharray": [2, 1] },
+    paint: {
+      "line-color": "#9aa4a8",
+      "line-width": 0.8,
+      "line-dasharray": [2, 1],
+    },
   },
 ];
 
@@ -346,6 +389,131 @@ function sparkline(counts: number[]): SVGSVGElement {
   return svg;
 }
 
+const SHIFT_LABELS: Record<string, string> = {
+  madrugada: "Madrugada",
+  mañana: "Mañana",
+  tarde: "Tarde",
+  noche: "Noche",
+  sin_dato: "Sin dato",
+};
+
+function barChart(
+  values: { label: string; value: number; key: string }[],
+): HTMLElement {
+  const chart = document.createElement("div");
+  chart.className = "bar-chart";
+  chart.setAttribute("role", "list");
+  const max = Math.max(1, ...values.map(({ value }) => value));
+  for (const { label, value, key } of values) {
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.dataset.key = key;
+    row.setAttribute("role", "listitem");
+    const labelNode = document.createElement("span");
+    labelNode.className = "bar-label";
+    labelNode.textContent = label;
+    const track = document.createElement("span");
+    track.className = "bar-track";
+    const bar = document.createElement("span");
+    bar.className = "bar";
+    bar.style.width = `${(value / max) * 100}%`;
+    track.append(bar);
+    const count = document.createElement("span");
+    count.className = "bar-value";
+    count.textContent = value.toLocaleString("es-PE");
+    row.append(labelNode, track, count);
+    chart.append(row);
+  }
+  return chart;
+}
+
+function panel(title: string): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "detail-panel";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  section.append(heading);
+  return section;
+}
+
+function renderShiftPanel(
+  section: HTMLElement,
+  data: ShiftData,
+  ubigeo: string,
+  startMonth: string,
+  endMonth: string,
+): void {
+  const values = new Map<string, number>();
+  for (const row of data.rows) {
+    if (row.ubigeo !== ubigeo) continue;
+    if (row.mes < startMonth || row.mes > endMonth) continue;
+    values.set(row.turno, (values.get(row.turno) ?? 0) + row.denuncias);
+  }
+  const total = [...values.values()].reduce((sum, value) => sum + value, 0);
+  if (total < 5) {
+    const message = document.createElement("p");
+    message.className = "few-data";
+    message.textContent = "pocos datos";
+    section.append(message);
+    return;
+  }
+  const order = ["madrugada", "mañana", "tarde", "noche", "sin_dato"];
+  const keys = [...new Set([...order, ...values.keys()])];
+  section.append(
+    barChart(
+      keys.map((key) => ({
+        key,
+        label: SHIFT_LABELS[key] ?? key,
+        value: values.get(key) ?? 0,
+      })),
+    ),
+  );
+}
+
+function renderVictimPanel(section: HTMLElement, data: VictimData): void {
+  const note = document.createElement("p");
+  note.className = "privacy-note";
+  note.textContent = "Solo provincia constitucional del Callao, datos de 2024";
+  section.append(note);
+
+  const sexAgeTitle = document.createElement("h4");
+  sexAgeTitle.textContent = "Sexo y edad";
+  section.append(sexAgeTitle);
+  const sexAge = data.sex_age.map((row) => ({
+    key: `${row.sexo}-${row.banda_edad}`,
+    label: `${row.sexo}, ${row.banda_edad}`,
+    value: row.denuncias,
+  }));
+  section.append(barChart(sexAge));
+
+  const occupationTitle = document.createElement("h4");
+  occupationTitle.textContent = "Ocupación";
+  section.append(occupationTitle);
+  section.append(
+    barChart(
+      data.occupation.map((row) => ({
+        key: row.ocupacion,
+        label: row.ocupacion.replaceAll("_", " "),
+        value: row.denuncias,
+      })),
+    ),
+  );
+}
+
+function loadingMessage(): HTMLParagraphElement {
+  const message = document.createElement("p");
+  message.className = "loading";
+  message.textContent = "Cargando…";
+  return message;
+}
+
+function errorMessage(): HTMLParagraphElement {
+  const message = document.createElement("p");
+  message.className = "error";
+  message.textContent = "No se pudo cargar este panel.";
+  return message;
+}
+
 map.on("click", "districts-fill", (event: MapLayerMouseEvent) => {
   const feature = event.features?.[0];
   if (!feature) return;
@@ -378,7 +546,57 @@ map.on("click", "districts-fill", (event: MapLayerMouseEvent) => {
   caption.className = "total";
   caption.textContent = `${mesLabel(months[lo])} – ${mesLabel(months[hi])}`;
   content.append(caption, sparkline(counts));
-  new maplibregl.Popup().setLngLat(event.lngLat).setDOMContent(content).addTo(map);
+
+  const shiftSection = panel("Cuándo se reporta");
+  shiftSection.append(loadingMessage());
+  content.append(shiftSection);
+
+  const isCallao =
+    String(feature.properties?.nombre ?? "").toLocaleUpperCase("es-PE") ===
+      "CALLAO" &&
+    String(feature.properties?.provincia ?? "").toLocaleUpperCase("es-PE") ===
+      "CALLAO";
+  const victimSection = isCallao ? panel("Perfil de las víctimas") : null;
+  if (victimSection) {
+    victimSection.append(loadingMessage());
+    content.append(victimSection);
+  }
+  new maplibregl.Popup()
+    .setLngLat(event.lngLat)
+    .setDOMContent(content)
+    .addTo(map);
+
+  loadShiftData()
+    .then((data) => {
+      shiftSection.replaceChildren();
+      const heading = document.createElement("h3");
+      heading.textContent = "Cuándo se reporta";
+      shiftSection.append(heading);
+      renderShiftPanel(shiftSection, data, ubigeo, months[lo], months[hi]);
+    })
+    .catch(() => {
+      shiftSection.replaceChildren();
+      const heading = document.createElement("h3");
+      heading.textContent = "Cuándo se reporta";
+      shiftSection.append(heading, errorMessage());
+    });
+
+  if (victimSection) {
+    loadVictimData()
+      .then((data) => {
+        victimSection.replaceChildren();
+        const heading = document.createElement("h3");
+        heading.textContent = "Perfil de las víctimas";
+        victimSection.append(heading);
+        renderVictimPanel(victimSection, data);
+      })
+      .catch(() => {
+        victimSection.replaceChildren();
+        const heading = document.createElement("h3");
+        heading.textContent = "Perfil de las víctimas";
+        victimSection.append(heading, errorMessage());
+      });
+  }
 });
 
 map.on("mouseenter", "districts-fill", () => {
