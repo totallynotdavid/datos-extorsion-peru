@@ -11,14 +11,23 @@ import httpx
 class RobotsCheckedClient:
     """HTTP client that fetches each host's robots.txt once and refuses any
     request to a path it disallows. At least `delay` seconds pass between two
-    requests to one host."""
+    requests to one host.
+
+    A 429 on robots.txt always stops the run. Any other error status means no
+    rules when `open_on_robots_error` is set. Otherwise 401 and 403 disallow
+    everything and the rest allow everything."""
 
     def __init__(
-        self, client: httpx.Client, user_agent: str, delay: float = 0.0
+        self,
+        client: httpx.Client,
+        user_agent: str,
+        delay: float = 0.0,
+        open_on_robots_error: bool = False,
     ) -> None:
         self._client = client
         self._user_agent = user_agent
         self._delay = delay
+        self._open_on_robots_error = open_on_robots_error
         self._parsers: dict[str, urllib.robotparser.RobotFileParser] = {}
         self._last_request: dict[str, float] = {}
 
@@ -44,7 +53,7 @@ class RobotsCheckedClient:
                 raise RuntimeError(f"{robots_url}: HTTP 429, source stopped")
             if response.status_code == 200:
                 parser.parse(response.text.splitlines())
-            elif response.status_code in (401, 403):
+            elif response.status_code in (401, 403) and not self._open_on_robots_error:
                 parser.parse(["User-agent: *", "Disallow: /"])
             else:
                 parser.parse(["User-agent: *", "Disallow:"])
