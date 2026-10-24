@@ -2,7 +2,7 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
-from dep import export_web, extract, news, population, sidpol, sidpol_live
+from dep import callao, export_web, extract, news, population, sidpol, sidpol_live
 
 
 def _month(text: str) -> date:
@@ -87,6 +87,41 @@ def main(argv: list[str] | None = None) -> None:
         type=float,
         default=sidpol_live.DELAY,
         help=f"Seconds between requests (default: {sidpol_live.DELAY}).",
+    )
+
+    callao_cmd = commands.add_parser(
+        "callao",
+        help="Download the Callao regional government's SIDPOL extract and write "
+        "the sex x age band x month and occupation group x month victim-profile "
+        "tables to data/out/.",
+    )
+    callao_cmd.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("data/out"),
+        help="Directory for the output Parquet files (default: data/out).",
+    )
+    callao_cmd.add_argument(
+        "--csv-file",
+        type=Path,
+        help="Read the extract from this path instead of downloading it.",
+    )
+    callao_cmd.add_argument(
+        "--csv-url",
+        help="Download the extract from this URL instead of resolving it from "
+        "the open-data catalog.",
+    )
+    callao_cmd.add_argument(
+        "--catalog-url",
+        default=sidpol.CATALOG_URL,
+        help="Resolve the CSV URL from this CKAN package_show URL "
+        "(default: the open-data catalog).",
+    )
+    callao_cmd.add_argument(
+        "--delay",
+        type=float,
+        default=callao.DELAY,
+        help=f"Seconds between requests (default: {callao.DELAY}).",
     )
 
     population_cmd = commands.add_parser(
@@ -276,6 +311,21 @@ def main(argv: list[str] | None = None) -> None:
         except RuntimeError as exc:
             raise SystemExit(f"dep: error: {exc}") from exc
         print(out)
+    elif args.command == "callao":
+        if args.delay < 0:
+            parser.error("--delay must not be negative")
+        try:
+            sex_age_path, occupation_path = callao.run(
+                out_dir=args.out_dir,
+                csv_file=args.csv_file,
+                csv_url=args.csv_url,
+                catalog_url=args.catalog_url,
+                delay=args.delay,
+            )
+        except RuntimeError as exc:
+            raise SystemExit(f"dep: error: {exc}") from exc
+        print(sex_age_path)
+        print(occupation_path)
     elif args.command == "sidpol-live":
         if args.delay < 0:
             parser.error("--delay must not be negative")
