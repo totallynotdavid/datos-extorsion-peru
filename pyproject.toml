@@ -5,10 +5,10 @@ description = "Open data pipeline for crime and extortion events in Peru"
 requires-python = ">=3.15,<3.16"
 readme = "README.md"
 dependencies = [
-    "anthropic>=2.3.0",
+    "anthropic>=2.4.0",
     "duckdb>=2.0.0",
     "httpx>=0.28.0",
-    "python-calamine>=0.9.0",
+    "python-calamine>=0.9.1",
 ]
 
 [project.scripts]
@@ -24,7 +24,7 @@ module-root = "src"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.18.0",
+    "mypy>=2.4.1",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]
