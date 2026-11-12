@@ -3,13 +3,13 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # A push to main must not cancel a deploy in progress.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # A push to master must not cancel a deploy in progress.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
   contents: read
@@ -71,7 +71,7 @@ jobs:
 
   deploy:
     needs: [check, web, worker, changes]
-    if: github.ref == 'refs/heads/main' && needs.changes.outputs.site == 'true'
+    if: github.ref == 'refs/heads/master' && needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: deploy
