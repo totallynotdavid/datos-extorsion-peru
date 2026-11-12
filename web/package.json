@@ -9,14 +9,14 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "maplibre-gl": "^6.16.0",
+    "maplibre-gl": "^6.18.0",
     "pmtiles": "^4.5.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@types/geojson": "^7946.0.16",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.8"
   }
 }
